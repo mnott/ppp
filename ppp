@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+# encoding: utf-8
+r"""
+
+Take an text file and apply regexes read from a pattern file.
+
+# RegEx Pattern File
+
+Those regexes are done in a pattern file as follows:
+
+ - Lines starting with `#` are regarded as comments
+ - Empty lines are ignored too
+ - Search and replace pattern are separated by !
+ - Group backreferences work with backslash
+
+A minimal file may look like this:
+
+```
+# Comment
+a(.*?)b!c\1d
+```
+"""
+#
+# Imports
+#
+import typer
+import regex as re
+
+
+#
+# Command Line Interface
+#
+app = typer.Typer(add_completion=False)
+state = {"verbose": False}
+
+
+#
+# Filter
+#
+@app.command()
+def parse (
+    pattern: str  = typer.Option("trafos.txt", help="Pattern File"),
+    parse:   str  = typer.Option("page1.txt",  help="File to parse")
+):
+    """
+    Parse the file.
+
+    Use like
+
+        ./ppp.py parse --pattern trafos.txt --parse page1.txt
+    """
+    Pattern = open(pattern, 'r').readlines()
+    Lines   = open(parse,   'r').readlines()
+    loaded_pattern = []
+
+    for pattern in Pattern:
+        pattern = pattern.rstrip()
+        if (pattern.startswith("#") or "!" not in pattern):
+            continue
+        search, replace = pattern.split('!',1)
+        loaded_pattern.append([search, replace])
+
+    for line in Lines:
+        line = line.rstrip()
+        found = 0
+        for index, pattern in enumerate(loaded_pattern):
+            search, replace = loaded_pattern[index]
+            if re.findall(search,line):
+                found = 1
+                line = re.sub(search, replace, line)
+                if (line != ""):
+                    print (line)
+        if (found == 0):
+            print (line)
+        else:
+            found = 0
+
+
+
+
+#
+# Command: Doc
+#
+@app.command()
+def doc (
+    title: str = typer.Option("Python Pattern Parser (PPP)", help="Doc Title"),
+    toc: bool  = typer.Option(True, help="With TOC")
+    ):
+    """
+    Re-create the documentation.
+
+    Use like
+
+        ./ppp.py doc --no-toc >README.md
+    """
+    import importlib
+    import importlib.util
+    import sys
+    import os
+    import doc2md
+
+    def import_path(path):
+        module_name = os.path.basename(path).replace('-', '_')
+        spec = importlib.util.spec_from_loader(
+            module_name,
+            importlib.machinery.SourceFileLoader(module_name, path)
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        sys.modules[module_name] = module
+        return module
+
+    mod_name = os.path.basename(__file__)
+    if mod_name.endswith('.py'):
+        mod_name = mod_name.rsplit('.py', 1)[0]
+    atitle = title or mod_name.replace('_', '-')
+    module = import_path(__file__)
+    docstr = module.__doc__
+    result = doc2md.doc2md(docstr, atitle, toc=toc, min_level=0)
+    print (result)
+
+
+#
+# Call app Function
+#
+if __name__ == "__main__":
+    try:
+        app()
+    except SystemExit as e:
+        if e.code != 0:
+            raise
+
