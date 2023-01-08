@@ -31,50 +31,38 @@ import regex as re
 # Command Line Interface
 #
 app = typer.Typer(add_completion=False)
-state = {"verbose": False}
 
 
 #
-# Filter
+# Parse
 #
 @app.command()
 def parse (
-    pattern: str  = typer.Option("trafos.txt", help="Pattern File"),
-    parse:   str  = typer.Option("page1.txt",  help="File to parse")
+    pattern: str  = typer.Option("pattern.txt", help="Pattern File"),
+    parse:   str  = typer.Option("content.txt", help="File to parse")
 ):
     """
-    Parse the file.
+    Parse the file and apply the regex patterns specified in the `pattern` file to the `parse` file.
 
-    Use like
-
-        ./ppp.py parse --pattern trafos.txt --parse page1.txt
+    :param pattern: str, path to the pattern file.
+    :param parse: str, path to the file to parse.
     """
-    Pattern = open(pattern, 'r').readlines()
-    Lines   = open(parse,   'r').readlines()
     loaded_pattern = []
 
-    for pattern in Pattern:
-        pattern = pattern.rstrip()
-        if (pattern.startswith("#") or "!" not in pattern):
-            continue
-        search, replace = pattern.split('!',1)
-        loaded_pattern.append([search, replace])
+    with open(pattern, "r") as f:
+        for line in f:
+            line = line.rstrip()
+            if (line.startswith("#") or "!" not in line):
+                continue
+            search, replace = line.split("!", 1)
+            loaded_pattern.append((search, replace))
 
-    for line in Lines:
-        line = line.rstrip()
-        found = 0
-        for index, pattern in enumerate(loaded_pattern):
-            search, replace = loaded_pattern[index]
-            if re.findall(search,line):
-                found = 1
+    with open(parse, "r") as f:
+        for line in f:
+            line = line.rstrip()
+            for search, replace in loaded_pattern:
                 line = re.sub(search, replace, line)
-                if (line != ""):
-                    print (line)
-        if (found == 0):
-            print (line)
-        else:
-            found = 0
-
+            print(line)
 
 
 
@@ -82,16 +70,12 @@ def parse (
 # Command: Doc
 #
 @app.command()
-def doc (
-    title: str = typer.Option("Python Pattern Parser (PPP)", help="Doc Title"),
-    toc: bool  = typer.Option(True, help="With TOC")
-    ):
+def doc(title: str = "Python Pattern Parser (PPP)", toc: bool = True):
     """
-    Re-create the documentation.
+    Re-create the documentation and write it to the output file.
 
-    Use like
-
-        ./ppp.py doc --no-toc >README.md
+    :param title: str, title of the documentation.
+    :param toc: bool, whether to include a table of contents.
     """
     import importlib
     import importlib.util
@@ -100,10 +84,10 @@ def doc (
     import doc2md
 
     def import_path(path):
-        module_name = os.path.basename(path).replace('-', '_')
+        module_name = os.path.basename(path).replace("-", "_")
         spec = importlib.util.spec_from_loader(
             module_name,
-            importlib.machinery.SourceFileLoader(module_name, path)
+            importlib.machinery.SourceFileLoader(module_name, path),
         )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -111,13 +95,13 @@ def doc (
         return module
 
     mod_name = os.path.basename(__file__)
-    if mod_name.endswith('.py'):
-        mod_name = mod_name.rsplit('.py', 1)[0]
-    atitle = title or mod_name.replace('_', '-')
+    if mod_name.endswith(".py"):
+        mod_name = mod_name.rsplit(".py", 1)[0]
+    atitle = title or mod_name.replace("_", "-")
     module = import_path(__file__)
     docstr = module.__doc__
     result = doc2md.doc2md(docstr, atitle, toc=toc, min_level=0)
-    print (result)
+    print(result)
 
 
 #

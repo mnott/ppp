@@ -1,0 +1,7 @@
+    with open(pattern, "r") as f:
+        for line in f:
+            line = line.rstrip()
+            if (line.startswith("#") or "!" not in line):
+                continue
+            search, replace = line.split("!", 1)
+            loaded_pattern.append((search, replace))
